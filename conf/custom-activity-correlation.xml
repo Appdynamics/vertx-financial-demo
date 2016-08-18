@@ -1,0 +1,237 @@
+<activities>
+
+	<!-- HTTP-CLIENT: Exit point config and correlation for outgoing HTTP
+             NOTE: this actually doesn't work as intended.  The intention is to ONLY
+             instrument the no-arg end() method.  See CORE-75836 -->
+        <producer enabled="true" activity-type="vertx-http">
+            <instrumentation>
+                <class-name>io.vertx.core.http.impl.HttpClientRequestImpl</class-name>
+                <method-name>end</method-name>
+                <match-type>MATCHES_CLASS</match-type>
+		 <param-types></param-types>
+            </instrumentation>
+	    <identifiers>
+                <identifier name="host">
+                    <data-gatherer-type>INVOKED</data-gatherer-type>
+                    <getter-chain>getHost()</getter-chain>
+                    <transformer-type>GETTER_METHODS</transformer-type>
+                </identifier>
+                <identifier name="port">
+                    <data-gatherer-type>INVOKED</data-gatherer-type>
+                    <getter-chain>port</getter-chain>
+                    <transformer-type>GETTER_METHODS</transformer-type>
+                </identifier>
+	    </identifiers>
+            <correlation>
+                <payload-pointer>
+                    <data-gatherer-type>INVOKED</data-gatherer-type>
+                    <getter-chain>this</getter-chain>
+                    <transformer-type>GETTER_METHODS</transformer-type>
+                </payload-pointer>
+		<payload-operation>
+		    <access-type>method</access-type>
+		    <access-method>putHeader</access-method>
+		    <param-types>String,String</param-types>
+		</payload-operation>
+            </correlation>
+        </producer>
+
+	<!-- HTTP-CLIENT V2: Exit point config and correlation for outgoing HTTP -->
+        <producer enabled="true" activity-type="vertx-http">
+            <instrumentation>
+                <class-name>io.vertx.core.http.impl.HttpClientRequestImpl</class-name>
+                <method-name>end</method-name>
+                <match-type>MATCHES_CLASS</match-type>
+		 <param-types>io.vertx.core.buffer.Buffer</param-types>
+            </instrumentation>
+	    <identifiers>
+                <identifier name="host">
+                    <data-gatherer-type>INVOKED</data-gatherer-type>
+                    <getter-chain>getHost()</getter-chain>
+                    <transformer-type>GETTER_METHODS</transformer-type>
+                </identifier>
+                <identifier name="port">
+                    <data-gatherer-type>INVOKED</data-gatherer-type>
+                    <getter-chain>port</getter-chain>
+                    <transformer-type>GETTER_METHODS</transformer-type>
+                </identifier>
+	    </identifiers>
+            <correlation>
+                <payload-pointer>
+                    <data-gatherer-type>INVOKED</data-gatherer-type>
+                    <getter-chain>this</getter-chain>
+                    <transformer-type>GETTER_METHODS</transformer-type>
+                </payload-pointer>
+		<payload-operation>
+		    <access-type>method</access-type>
+		    <access-method>putHeader</access-method>
+		    <param-types>String,String</param-types>
+		</payload-operation>
+            </correlation>
+        </producer>
+
+	<!-- HTTP-INCOMING: Transaction detection and correlation -->
+        <consumer enabled="true" identify-transaction="true">
+            <instrumentation>
+                <class-name>io.vertx.core.http.impl.HttpServerRequestImpl</class-name>
+                <method-name>handleEnd</method-name>
+                <match-type>MATCHES_CLASS</match-type>
+		 <param-types></param-types>
+            </instrumentation>
+
+            <correlation>
+                <payload-pointer>
+                    <data-gatherer-type>INVOKED</data-gatherer-type>
+                    <getter-chain>headers()</getter-chain>
+                    <transformer-type>GETTER_METHODS</transformer-type>
+                </payload-pointer>
+		<payload-operation>
+		    <access-type>method</access-type>
+		    <access-method>get</access-method>
+		    <param-types>String</param-types>
+		</payload-operation>
+            </correlation>
+        </consumer>
+
+	<!-- MESSAGE SEND: Both in-process and cross-JVM -->
+        <producer enabled="true" activity-type="vertx-msg">
+            <instrumentation>
+                <class-name>io.vertx.core.eventbus.impl.EventBusImpl</class-name>
+                <method-name>sendOrPubInternal</method-name>
+                <match-type>MATCHES_CLASS</match-type>
+		 <param-types>io.vertx.core.eventbus.impl.MessageImpl,io.vertx.core.eventbus.DeliveryOptions,io.vertx.core.Handler</param-types>
+            </instrumentation>
+	    <identifiers>
+                <identifier name="address">
+                    <data-gatherer-type>POSITION</data-gatherer-type>
+                    <position>0</position>
+                    <getter-chain>address()</getter-chain>
+                    <transformer-type>GETTER_METHODS</transformer-type>
+                </identifier>
+	    </identifiers>
+            <correlation>
+                <payload-pointer>
+                    <data-gatherer-type>POSITION</data-gatherer-type>
+                    <position>0</position>
+                    <getter-chain>headers()</getter-chain>
+                    <transformer-type>GETTER_METHODS</transformer-type>
+                </payload-pointer>
+		<payload-operation>
+		    <access-type>method</access-type>
+		    <access-method>add</access-method>
+		    <param-types>String,String</param-types>
+		</payload-operation>
+            </correlation>
+        </producer>
+
+	<!-- MESSAGE RCV: Both in-process and cross-JVM -->
+        <consumer enabled="true" identify-transaction="true">
+            <instrumentation>
+                <class-name>io.vertx.core.eventbus.impl.HandlerRegistration</class-name>
+                <method-name>deliver</method-name>
+                <match-type>MATCHES_CLASS</match-type>
+		 <param-types>io.vertx.core.Handler,io.vertx.core.eventbus.Message</param-types>
+            </instrumentation>
+
+            <correlation>
+                <payload-pointer>
+                    <data-gatherer-type>POSITION</data-gatherer-type>
+                    <position>1</position>
+                    <getter-chain>headers()</getter-chain>
+                    <transformer-type>GETTER_METHODS</transformer-type>
+                </payload-pointer>
+		<payload-operation>
+		    <access-type>method</access-type>
+		    <access-method>get</access-method>
+		    <param-types>String</param-types>
+		</payload-operation>
+            </correlation>
+        </consumer>
+
+	<!-- MESSAGE REPLY, cross-JVM and in-process -->
+        <producer enabled="true" activity-type="vertx-reply">
+            <instrumentation>
+                <class-name>io.vertx.core.eventbus.impl.MessageImpl</class-name>
+                <method-name>sendReply</method-name>
+                <match-type>MATCHES_CLASS</match-type>
+		 <param-types>io.vertx.core.eventbus.impl.MessageImpl,io.vertx.core.eventbus.DeliveryOptions,io.vertx.core.Handler</param-types>
+            </instrumentation>
+	    <identifiers>
+                <identifier name="address">
+                    <data-gatherer-type>INVOKED</data-gatherer-type>
+                    <getter-chain>address</getter-chain>
+                    <transformer-type>GETTER_METHODS</transformer-type>
+                </identifier>
+                <identifier name="hardcoded">
+                    <data-gatherer-type>INVOKED</data-gatherer-type>
+                    <user-defined-name>reply-address</user-defined-name>
+                    <transformer-type>USER_DEFINED_NAME</transformer-type>
+                </identifier>
+	    </identifiers>
+            <correlation>
+                <payload-pointer>
+                    <data-gatherer-type>POSITION</data-gatherer-type>
+                    <position>0</position>
+                    <getter-chain>headers()</getter-chain>
+                    <transformer-type>GETTER_METHODS</transformer-type>
+                </payload-pointer>
+		<payload-operation>
+		    <access-type>method</access-type>
+		    <access-method>add</access-method>
+		    <param-types>String,String</param-types>
+		</payload-operation>
+            </correlation>
+        </producer>
+
+
+	<!-- MESSAGE SEND/REPLY: Lighter-weight versions for in-process only.  You can't use both this
+            version and the above one at the same time, so this one is commented out by default.
+            Switch to this version if you only need in-process message correlation, performance
+            will be better
+        <producer enabled="true" activity-type="vertx-msg" in-process="true">
+            <instrumentation>
+                <class-name>io.vertx.core.eventbus.impl.EventBusImpl</class-name>
+                <method-name>sendOrPubInternal</method-name>
+                <match-type>MATCHES_CLASS</match-type>
+		<param-types>io.vertx.core.eventbus.impl.MessageImpl,io.vertx.core.eventbus.impl.DeliveryOptions,io.vertx.core.Handler</param-types>
+            </instrumentation>
+            <correlation>
+                <payload-pointer>
+                    <data-gatherer-type>POSITION</data-gatherer-type>
+                    <position>0</position>
+                    <getter-chain>headers()</getter-chain>
+                    <transformer-type>GETTER_METHODS</transformer-type>
+                </payload-pointer>
+		<payload-operation>
+		    <access-type>method</access-type>
+		    <access-method>add</access-method>
+		    <param-types>String,String</param-types>
+		</payload-operation>
+            </correlation>
+        </producer>
+
+        <producer enabled="true" activity-type="vertx-reply" in-process="true">
+            <instrumentation>
+                <class-name>io.vertx.core.eventbus.impl.MessageImpl</class-name>
+                <method-name>sendReply</method-name>
+                <match-type>MATCHES_CLASS</match-type>
+		 <param-types>io.vertx.core.eventbus.impl.MessageImpl,io.vertx.core.eventbus.DeliveryOptions,io.vertx.core.Handler</param-types>
+            </instrumentation>
+            <correlation>
+                <payload-pointer>
+                    <data-gatherer-type>POSITION</data-gatherer-type>
+                    <position>0</position>
+                    <getter-chain>headers()</getter-chain>
+                    <transformer-type>GETTER_METHODS</transformer-type>
+                </payload-pointer>
+		<payload-operation>
+		    <access-type>method</access-type>
+		    <access-method>add</access-method>
+		    <param-types>String,String</param-types>
+		</payload-operation>
+            </correlation>
+        </producer>
+ -->
+
+
+</activities>

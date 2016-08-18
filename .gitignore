@@ -1,0 +1,7 @@
+.vertx
+.idea
+*.iml
+.DS_Store
+*.jar
+*.zip
+target
